@@ -2,13 +2,14 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    test: {
-        globals: true,
-        environment: 'node',
-        coverage: {
-            reporter: ['text', 'json', 'html'],
-            include: ['src/**/*.ts'],
-            exclude: ['**/*.test.ts', '**/*.d.ts']
-        }
-    }
+  test: {
+    globals: true,
+    environment: 'node',
+    setupFiles: ['./__tests__/setup.ts'],
+  },
+  resolve: {
+    alias: {
+      '@': './src',
+    },
+  },
 });
