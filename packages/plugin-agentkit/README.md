@@ -1,143 +1,123 @@
-# Zora Plugin for Eliza
+# @elizaos/plugin-agentkit
 
-This plugin provides integration with the **Zora protocol** for creating cryptocurrencies on the Base blockchain within the Eliza ecosystem.
+AgentKit plugin for Eliza that enables interaction with CDP AgentKit tools for NFT and token management.
 
-## Features
+## Setup
 
-- **Coin Creation**: Create new coins on the Zora protocol
-- **IPFS Integration**: Automatic image and metadata upload to IPFS via Pinata
-- **Base Network Support**: Works on Base Mainnet and Base Sepolia testnet
-- **Flexible Configuration**: Support for both ZORA and ETH trading pairs
-
-## Installation
+1. Install dependencies:
 
 ```bash
-npm install @elizaos/plugin-zora
+pnpm install
 ```
 
-## Configuration
+2. Configure environment variables:
 
-### Environment Variables
-
-Set the following environment variables:
-
-```bash
-PINATA_JWT=your_pinata_jwt_token_here
+```env
+CDP_API_KEY_NAME=your_key_name
+CDP_API_KEY_PRIVATE_KEY=your_private_key
+CDP_AGENT_KIT_NETWORK=base-sepolia # Optional: Defaults to base-sepolia
 ```
 
-### Getting a Pinata JWT
-
-1. Sign up at [Pinata](https://pinata.cloud/)
-2. Go to your API Keys section
-3. Create a new API key with the following permissions:
-   - `pinFileToIPFS`
-   - `pinJSONToIPFS`
-4. Copy the JWT token and set it as `PINATA_JWT`
-
-## Usage
-
-### Basic Coin Creation
-
-The plugin provides a `COINIT` action that can be used to create new Zora coins:
-
-```typescript
-// Example usage in Eliza
-const result = await eliza.executeAction("COINIT", {
-  name: "My Community Coin",
-  symbol: "MCC",
-  description: "A community-driven coin for our ecosystem",
-  image: "path/to/image.png", // or "https://example.com/image.png"
-  category: "social",
-  currency: "ZORA"
-});
-```
-
-### Action Parameters
-
-The `COINIT` action accepts the following parameters:
-
-- **name** (required): The name of the coin to create
-- **symbol** (required): The symbol of the coin to create
-- **description** (required): The description of the coin
-- **image** (required): Local image file path or URI (ipfs:// or https://)
-- **category** (optional): The category of the coin, defaults to 'social'
-- **payoutRecipient** (optional): The address that will receive creator earnings, defaults to wallet address
-- **platformReferrer** (optional): The address that will receive platform referrer fees
-- **currency** (optional): The currency for deployment, can be 'ZORA' or 'ETH', defaults to 'ZORA'
-
-### Response Format
-
-Successful coin creation returns:
+3. Add the plugin to your character configuration:
 
 ```json
 {
-  "success": true,
-  "transactionHash": "0x...",
-  "coinAddress": "0x...",
-  "imageUri": "ipfs://...",
-  "uri": "ipfs://...",
-  "deployment": { ... },
-  "zoraURL": "https://zora.co/coin/base:0x..." // Only for base-mainnet
+    "plugins": ["@elizaos/plugin-agentkit"],
+    "settings": {
+        "secrets": {
+            "CDP_API_KEY_NAME": "your_key_name",
+            "CDP_API_KEY_PRIVATE_KEY": "your_private_key"
+        }
+    }
 }
 ```
 
-## Supported Networks
+## Available Tools
 
-- **Base Mainnet**: Production environment
-- **Base Sepolia**: Test environment
+The plugin provides access to the following CDP AgentKit tools:
+
+-   `GET_WALLET_DETAILS`: Get wallet information
+-   `DEPLOY_NFT`: Deploy a new NFT collection
+-   `DEPLOY_TOKEN`: Deploy a new token
+-   `GET_BALANCE`: Check token or NFT balance
+-   `MINT_NFT`: Mint NFTs from a collection
+-   `REGISTER_BASENAME`: Register a basename for NFTs
+-   `REQUEST_FAUCET_FUNDS`: Request testnet funds
+-   `TRADE`: Execute trades
+-   `TRANSFER`: Transfer tokens or NFTs
+-   `WOW_BUY_TOKEN`: Buy WOW tokens
+-   `WOW_SELL_TOKEN`: Sell WOW tokens
+-   `WOW_CREATE_TOKEN`: Create new WOW tokens
+
+## Usage Examples
+
+1. Get wallet details:
+
+```
+Can you show me my wallet details?
+```
+
+2. Deploy an NFT collection:
+
+```
+Deploy a new NFT collection called "Music NFTs" with symbol "MUSIC"
+```
+
+3. Create a token:
+
+```
+Create a new WOW token called "Artist Token" with symbol "ART"
+```
+
+4. Check balance:
+
+```
+What's my current balance?
+```
 
 ## Development
 
-### Building
+1. Build the plugin:
 
 ```bash
-npm run build
+pnpm build
 ```
 
-### Testing
+2. Run in development mode:
 
 ```bash
-npm test
+pnpm dev
 ```
-
-### Linting
-
-```bash
-npm run lint
-npm run lint:fix
-```
-
-## Architecture
-
-The plugin consists of several key components:
-
-- **ZoraActionProvider**: Main provider class that handles coin creation
-- **Utils**: IPFS upload utilities for images and metadata
-- **Schemas**: Zod schemas for parameter validation
-- **Actions**: Eliza action definitions and handlers
 
 ## Dependencies
 
-- `@zoralabs/coins-sdk`: Official Zora SDK for coin creation
-- `viem`: Ethereum library for transaction handling
-- `zod`: Schema validation
-- `@elizaos/core`: Eliza core framework
+-   @elizaos/core
+-   @coinbase/cdp-agentkit-core
+-   @coinbase/cdp-langchain
+-   @langchain/core
 
-## Contributing
+## Network Support
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+The plugin supports the following networks:
+
+-   Base Sepolia (default)
+-   Base Mainnet
+
+Configure the network using the `CDP_AGENT_KIT_NETWORK` environment variable.
+
+## Troubleshooting
+
+1. If tools are not being triggered:
+
+    - Verify CDP API key configuration
+    - Check network settings
+    - Ensure character configuration includes the plugin
+
+2. Common errors:
+    - "Cannot find package": Make sure dependencies are installed
+    - "API key not found": Check environment variables
+    - "Network error": Verify network configuration
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Support
-
-For support and questions:
-- Check the [Zora Documentation](https://docs.zora.co/coins)
-- Visit the [Eliza Community](https://github.com/elizaos/eliza)
-- Open an issue in this repository
+MIT

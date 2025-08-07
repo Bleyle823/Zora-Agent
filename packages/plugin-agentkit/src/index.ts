@@ -1,43 +1,44 @@
 import type { Plugin } from "@elizaos/core";
 import { walletProvider, getClient } from "./provider";
-import { getZoraActions } from "./actions";
+import { getAgentKitActions } from "./actions";
 
 // Initial banner
 console.log("\n┌════════════════════════════════════════┐");
-console.log("│          ZORA PLUGIN                   │");
+console.log("│          AGENTKIT PLUGIN               │");
 console.log("├────────────────────────────────────────┤");
-console.log("│  Initializing Zora Plugin...           │");
+console.log("│  Initializing AgentKit Plugin...       │");
 console.log("│  Version: 0.0.1                        │");
 console.log("└════════════════════════════════════════┘");
 
 const initializeActions = async () => {
     try {
         // Validate environment variables
-        const pinataJwt = process.env.PINATA_JWT;
+        const apiKeyName = process.env.CDP_API_KEY_NAME;
+        const apiKeyPrivateKey = process.env.CDP_API_KEY_PRIVATE_KEY;
 
-        if (!pinataJwt) {
-            console.warn("⚠️ Missing PINATA_JWT - Zora actions will not be available");
+        if (!apiKeyName || !apiKeyPrivateKey) {
+            console.warn("⚠️ Missing CDP API credentials - AgentKit actions will not be available");
             return [];
         }
 
-        const actions = await getZoraActions({
+        const actions = await getAgentKitActions({
             getClient,
         });
-        console.log("✔ Zora actions initialized successfully.");
+        console.log("✔ AgentKit actions initialized successfully.");
         return actions;
     } catch (error) {
-        console.error("❌ Failed to initialize Zora actions:", error);
+        console.error("❌ Failed to initialize AgentKit actions:", error);
         return []; // Return empty array instead of failing
     }
 };
 
-export const zoraPlugin: Plugin = {
-    name: "[Zora] Integration",
-    description: "Zora protocol integration plugin for creating coins on Base blockchain",
+export const agentKitPlugin: Plugin = {
+    name: "[AgentKit] Integration",
+    description: "AgentKit integration plugin",
     providers: [walletProvider],
     evaluators: [],
     services: [],
     actions: await initializeActions(),
 };
 
-export default zoraPlugin;
+export default agentKitPlugin;

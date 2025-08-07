@@ -9,29 +9,29 @@ import {
     composeContext,
     generateObject,
 } from "@elizaos/core";
-import type { ZoraActionProvider } from "./zoraActionProvider";
-import { CreateCoinSchema } from "./schemas";
+import type { CdpAgentkit } from "@coinbase/cdp-agentkit-core";
+import { CdpToolkit, type Tool } from "@coinbase/cdp-langchain";
 
-type GetZoraActionsParams = {
-    getClient: () => Promise<ZoraActionProvider>;
+type GetAgentKitActionsParams = {
+    getClient: () => Promise<CdpAgentkit>;
     config?: {
         networkId?: string;
     };
 };
 
 /**
- * Get all Zora actions
+ * Get all AgentKit actions
  */
-export async function getZoraActions({
+export async function getAgentKitActions({
     getClient,
-}: GetZoraActionsParams): Promise<Action[]> {
-    const zoraProvider = await getClient();
-    
-    // Create the coinIt action
-    const coinItAction: Action = {
-        name: "COINIT",
-        description: "Create a new Zora coin on the Base blockchain",
-        similes: ["create coin", "mint coin", "deploy coin", "create token"],
+}: GetAgentKitActionsParams): Promise<Action[]> {
+    const agentkit = await getClient();
+    const cdpToolkit = new CdpToolkit(agentkit);
+    const tools = cdpToolkit.getTools();
+    const actions = tools.map((tool: Tool) => ({
+        name: tool.name.toUpperCase(),
+        description: tool.description,
+        similes: [],
         validate: async () => true,
         handler: async (
             runtime: IAgentRuntime,
@@ -49,19 +49,23 @@ export async function getZoraActions({
                 );
 
                 const parameterContext = composeParameterContext(
+                    tool,
                     currentState
                 );
                 const parameters = await generateParameters(
                     runtime,
-                    parameterContext
+                    parameterContext,
+                    tool
                 );
 
-                const result = await executeZoraAction(
+                const result = await executeToolAction(
+                    tool,
                     parameters,
                     client
                 );
 
                 const responseContext = composeResponseContext(
+                    tool,
                     result,
                     currentState
                 );
@@ -76,66 +80,59 @@ export async function getZoraActions({
                 const errorMessage =
                     error instanceof Error ? error.message : String(error);
                 callback?.({
-                    text: `Error executing Zora action: ${errorMessage}`,
+                    text: `Error executing action ${tool.name}: ${errorMessage}`,
                     content: { error: errorMessage },
                 });
                 return false;
             }
         },
-        examples: [
-            "Create a coin called 'MyToken' with symbol 'MTK'",
-            "Deploy a new Zora coin with name 'CommunityCoin' and symbol 'CC'",
-            "Mint a coin called 'GameToken' with symbol 'GTK'"
-        ],
-    };
-
-    return [coinItAction];
+        examples: [],
+    }));
+    return actions;
 }
 
-async function executeZoraAction(
+async function executeToolAction(
+    tool: Tool,
     parameters: unknown,
-    client: ZoraActionProvider
+    client: CdpAgentkit
 ): Promise<unknown> {
-    // For now, we'll return a mock response since we need a proper wallet provider
-    // In a real implementation, this would use the ZoraActionProvider.createCoin method
-    return {
-        success: true,
-        message: "Zora coin creation action executed successfully",
-        parameters: parameters
-    };
+    const toolkit = new CdpToolkit(client);
+    const tools = toolkit.getTools();
+    const selectedTool = tools.find((t) => t.name === tool.name);
+
+    if (!selectedTool) {
+        throw new Error(`Tool ${tool.name} not found`);
+    }
+
+    return await selectedTool.call(parameters);
 }
 
-function composeParameterContext(state: State): string {
+function composeParameterContext(tool: Tool, state: State): string {
     const contextTemplate = `{{recentMessages}}
 
-Given the recent messages, extract the following information for creating a Zora coin:
-- name: The name of the coin to create
-- symbol: The symbol of the coin to create  
-- description: The description of the coin
-- image: Local image file path or URI (ipfs:// or https://)
-- category: The category of the coin (optional, defaults to 'social')
-- payoutRecipient: The address that will receive creator earnings (optional)
-- platformReferrer: The address that will receive platform referrer fees (optional)
-- currency: The currency for deployment, can be 'ZORA' or 'ETH' (optional, defaults to 'ZORA')
+Given the recent messages, extract the following information for the action "${tool.name}":
+${tool.description}
 `;
     return composeContext({ state, template: contextTemplate });
 }
 
 async function generateParameters(
     runtime: IAgentRuntime,
-    context: string
+    context: string,
+    tool: Tool
 ): Promise<unknown> {
     const { object } = await generateObject({
         runtime,
         context,
         modelClass: ModelClass.LARGE,
-        schema: CreateCoinSchema,
+        schema: tool.schema,
     });
 
     return object;
 }
 
 function composeResponseContext(
+    tool: Tool,
     result: unknown,
     state: State
 ): string {
@@ -158,7 +155,7 @@ About {{agentName}}:
 # Capabilities
 Note that {{agentName}} is capable of reading/seeing/hearing various forms of media, including images, videos, audio, plaintext and PDFs. Recent attachments have been included above under the "Attachments" section.
 
-The Zora coin creation action was executed successfully.
+The action "${tool.name}" was executed successfully.
 Here is the result:
 ${JSON.stringify(result)}
 
