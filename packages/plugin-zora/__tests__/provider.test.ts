@@ -86,13 +86,15 @@ describe('Zora Provider', () => {
         });
 
         it('should handle errors and return error message', async () => {
-            // Mock getZoraClients to throw an error
-            vi.mocked(getZoraClients).mockRejectedValueOnce(
-                new Error('Configuration failed')
-            );
+            // Temporarily remove environment variables to trigger error
+            const originalRpcUrl = process.env.ZORA_RPC_URL;
+            delete process.env.ZORA_RPC_URL;
 
             const result = await zoraProvider.get(mockRuntime);
-            expect(result).toBe('Error initializing Zora wallet: Configuration failed');
+            expect(result).toBe('Error initializing Zora wallet: Missing required Zora credentials. Please set ZORA_RPC_URL and ZORA_PRIVATE_KEY environment variables.');
+
+            // Restore environment variable
+            process.env.ZORA_RPC_URL = originalRpcUrl;
         });
     });
 });
