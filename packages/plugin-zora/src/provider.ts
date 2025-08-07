@@ -1,7 +1,7 @@
-import type { Provider, IAgentRuntime } from "@elizaos/core";
-import { createWalletClient, createPublicClient, http, type Hex, type Address } from "viem";
-import { base } from "viem/chains";
-import { privateKeyToAccount } from "viem/accounts";
+import type { Provider, IAgentRuntime } from '@elizaos/core';
+import { createWalletClient, createPublicClient, http, type Hex, type Address } from 'viem';
+import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 export interface ZoraClients {
     publicClient: ReturnType<typeof createPublicClient>;
@@ -15,7 +15,9 @@ export async function getZoraClients(): Promise<ZoraClients> {
     const privateKey = process.env.ZORA_PRIVATE_KEY;
 
     if (!rpcUrl || !privateKey) {
-        throw new Error("Missing required Zora credentials. Please set ZORA_RPC_URL and ZORA_PRIVATE_KEY environment variables.");
+        throw new Error(
+            'Missing required Zora credentials. Please set ZORA_RPC_URL and ZORA_PRIVATE_KEY environment variables.'
+        );
     }
 
     // Set up account
@@ -36,7 +38,7 @@ export async function getZoraClients(): Promise<ZoraClients> {
     return {
         publicClient,
         walletClient,
-        account
+        account,
     };
 }
 
@@ -46,7 +48,7 @@ export const zoraProvider: Provider = {
             const clients = await getZoraClients();
             return `Zora Wallet Address: ${clients.account.address}`;
         } catch (error) {
-            console.error("Error in Zora provider:", error);
+            console.error('Error in Zora provider:', error);
             return `Error initializing Zora wallet: ${error.message}`;
         }
     },
