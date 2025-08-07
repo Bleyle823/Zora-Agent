@@ -1,27 +1,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getClient, walletProvider } from '../src/provider';
-import { CdpAgentkit } from '@coinbase/cdp-agentkit-core';
-import * as fs from 'fs';
+import { getZoraClients, zoraProvider } from '../src/provider';
 
-// Mock dependencies
-vi.mock('@coinbase/cdp-agentkit-core', () => ({
-    CdpAgentkit: {
-        configureWithWallet: vi.fn().mockImplementation(async (config) => ({
-            exportWallet: vi.fn().mockResolvedValue('mocked-wallet-data'),
-            wallet: {
-                addresses: [{ id: '0x123...abc' }]
-            }
-        }))
-    }
+// Mock viem dependencies
+vi.mock('viem', () => ({
+    createWalletClient: vi.fn().mockReturnValue({
+        account: { address: '0x123...abc' }
+    }),
+    createPublicClient: vi.fn().mockReturnValue({}),
+    http: vi.fn(),
+    base: { id: 8453, name: 'Base' }
 }));
 
-vi.mock('fs', () => ({
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-    writeFileSync: vi.fn()
+vi.mock('viem/accounts', () => ({
+    privateKeyToAccount: vi.fn().mockReturnValue({
+        address: '0x123...abc'
+    })
 }));
 
-describe('AgentKit Provider', () => {
+vi.mock('viem/chains', () => ({
+    base: { id: 8453, name: 'Base' }
+}));
+
+describe('Zora Provider', () => {
     const mockRuntime = {
         name: 'test-runtime',
         memory: new Map(),
@@ -32,89 +32,67 @@ describe('AgentKit Provider', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        process.env.CDP_AGENT_KIT_NETWORK = 'base-sepolia';
+        // Set up environment variables for testing
+        process.env.ZORA_RPC_URL = 'https://base-sepolia.g.alchemy.com/v2/test';
+        process.env.ZORA_PRIVATE_KEY = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
     });
 
     afterEach(() => {
-        delete process.env.CDP_AGENT_KIT_NETWORK;
+        delete process.env.ZORA_RPC_URL;
+        delete process.env.ZORA_PRIVATE_KEY;
     });
 
-    describe('getClient', () => {
-        it('should create new wallet when no existing wallet data', async () => {
-            vi.mocked(fs.existsSync).mockReturnValue(false);
-
-            const client = await getClient();
+    describe('getZoraClients', () => {
+        it('should create clients with valid environment variables', async () => {
+            const clients = await getZoraClients();
             
-            expect(CdpAgentkit.configureWithWallet).toHaveBeenCalledWith({
-                networkId: 'base-sepolia'
-            });
-            expect(fs.writeFileSync).toHaveBeenCalledWith(
-                'wallet_data.txt',
-                'mocked-wallet-data'
-            );
-            expect(client).toBeDefined();
+            expect(clients).toBeDefined();
+            expect(clients.account).toBeDefined();
+            expect(clients.account.address).toBe('0x123...abc');
+            expect(clients.publicClient).toBeDefined();
+            expect(clients.walletClient).toBeDefined();
         });
 
-        it('should use existing wallet data when available', async () => {
-            vi.mocked(fs.existsSync).mockReturnValue(true);
-            vi.mocked(fs.readFileSync).mockReturnValue('existing-wallet-data');
+        it('should throw error when ZORA_RPC_URL is missing', async () => {
+            delete process.env.ZORA_RPC_URL;
 
-            const client = await getClient();
-            
-            expect(CdpAgentkit.configureWithWallet).toHaveBeenCalledWith({
-                cdpWalletData: 'existing-wallet-data',
-                networkId: 'base-sepolia'
-            });
-            expect(fs.writeFileSync).toHaveBeenCalledWith(
-                'wallet_data.txt',
-                'mocked-wallet-data'
+            await expect(getZoraClients()).rejects.toThrow(
+                'Missing required Zora credentials. Please set ZORA_RPC_URL and ZORA_PRIVATE_KEY environment variables.'
             );
-            expect(client).toBeDefined();
         });
 
-        it('should handle file read errors gracefully', async () => {
-            vi.mocked(fs.existsSync).mockReturnValue(true);
-            vi.mocked(fs.readFileSync).mockImplementation(() => {
-                throw new Error('File read error');
-            });
+        it('should throw error when ZORA_PRIVATE_KEY is missing', async () => {
+            delete process.env.ZORA_PRIVATE_KEY;
 
-            const client = await getClient();
-            
-            expect(CdpAgentkit.configureWithWallet).toHaveBeenCalledWith({
-                networkId: 'base-sepolia'
-            });
-            expect(fs.writeFileSync).toHaveBeenCalledWith(
-                'wallet_data.txt',
-                'mocked-wallet-data'
+            await expect(getZoraClients()).rejects.toThrow(
+                'Missing required Zora credentials. Please set ZORA_RPC_URL and ZORA_PRIVATE_KEY environment variables.'
             );
-            expect(client).toBeDefined();
         });
 
-        it('should use custom network from environment variable', async () => {
-            process.env.CDP_AGENT_KIT_NETWORK = 'custom-network';
-            vi.mocked(fs.existsSync).mockReturnValue(false);
+        it('should throw error when both environment variables are missing', async () => {
+            delete process.env.ZORA_RPC_URL;
+            delete process.env.ZORA_PRIVATE_KEY;
 
-            await getClient();
-            
-            expect(CdpAgentkit.configureWithWallet).toHaveBeenCalledWith({
-                networkId: 'custom-network'
-            });
+            await expect(getZoraClients()).rejects.toThrow(
+                'Missing required Zora credentials. Please set ZORA_RPC_URL and ZORA_PRIVATE_KEY environment variables.'
+            );
         });
     });
 
-    describe('walletProvider', () => {
-        it('should return wallet address', async () => {
-            const result = await walletProvider.get(mockRuntime);
-            expect(result).toBe('AgentKit Wallet Address: 0x123...abc');
+    describe('zoraProvider', () => {
+        it('should return wallet address when clients are available', async () => {
+            const result = await zoraProvider.get(mockRuntime);
+            expect(result).toBe('Zora Wallet Address: 0x123...abc');
         });
 
-        it('should handle errors and return null', async () => {
-            vi.mocked(CdpAgentkit.configureWithWallet).mockRejectedValueOnce(
+        it('should handle errors and return error message', async () => {
+            // Mock getZoraClients to throw an error
+            vi.mocked(getZoraClients).mockRejectedValueOnce(
                 new Error('Configuration failed')
             );
 
-            const result = await walletProvider.get(mockRuntime);
-            expect(result).toBeNull();
+            const result = await zoraProvider.get(mockRuntime);
+            expect(result).toBe('Error initializing Zora wallet: Configuration failed');
         });
     });
 });

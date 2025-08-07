@@ -1,12 +1,9 @@
-// Test setup for Polymarket plugin
+// Test setup for Zora plugin
 import { vi } from 'vitest';
 
 // Mock environment variables for testing
-process.env.POLYMARKET_API_KEY = 'test-api-key';
-process.env.POLYMARKET_SECRET = 'test-secret';
-process.env.POLYMARKET_PASSPHRASE = 'test-passphrase';
-process.env.WALLET_PRIVATE_KEY = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-process.env.RPC_PROVIDER_URL = 'https://polygon-rpc.com';
+process.env.ZORA_RPC_URL = 'https://base-sepolia.g.alchemy.com/v2/test';
+process.env.ZORA_PRIVATE_KEY = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
 
 // Global test configuration
 global.console = {
