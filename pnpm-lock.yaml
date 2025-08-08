@@ -172,6 +172,9 @@ importers:
       '@elizaos/plugin-bootstrap':
         specifier: workspace:*
         version: link:../packages/plugin-bootstrap
+      '@elizaos/plugin-zora':
+        specifier: workspace:*
+        version: link:../packages/plugin-zora
       '@types/node':
         specifier: ^22.13.5
         version: 22.13.5

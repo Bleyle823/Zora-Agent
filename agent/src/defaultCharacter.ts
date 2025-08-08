@@ -1,9 +1,10 @@
 import { type Character, ModelProviderName } from "@elizaos/core";
+import zoraPlugin from "@elizaos/plugin-zora";
 
 export const defaultCharacter: Character = {
     name: "Eliza",
     username: "eliza",
-    plugins: [],
+    plugins: [zoraPlugin],
     modelProvider: ModelProviderName.OPENAI,
     settings: {
         secrets: {},
