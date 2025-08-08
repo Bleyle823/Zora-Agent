@@ -77,14 +77,19 @@ function createCoinAction(getClients: () => Promise<ZoraClients>): Action {
                     platformReferrer: (parameters.platformReferrer as Address) || undefined,
                     currency:
                         parameters.currency === 'ZORA' ? DeployCurrency.ZORA : DeployCurrency.ETH,
-                };
+                } as const;
 
-                const result = await createCoin({
-                    ...coinParams,
-                    walletClient: clients.walletClient,
-                    publicClient: clients.publicClient,
-                    account: clients.account,
-                });
+                // Cast to any to accommodate varying SDK signatures across versions
+                const result = await (createCoin as unknown as (
+                    ...args: any[]
+                ) => Promise<any>)(
+                    coinParams,
+                    clients.walletClient as any,
+                    clients.publicClient as any,
+                    {
+                        gasMultiplier: 120,
+                    }
+                );
 
                 const responseContext = composeResponseContext('CREATE_COIN', result, currentState);
                 const response = await generateResponse(runtime, responseContext);
@@ -92,9 +97,9 @@ function createCoinAction(getClients: () => Promise<ZoraClients>): Action {
                 callback?.({
                     text: response,
                     content: {
-                        transactionHash: result.hash,
-                        coinAddress: result.address,
-                        deploymentDetails: result.deployment,
+                        transactionHash: (result as any).hash,
+                        coinAddress: (result as any).address,
+                        deploymentDetails: (result as any).deployment,
                     },
                 });
                 return true;
@@ -168,31 +173,33 @@ function tradeCoinAction(getClients: () => Promise<ZoraClients>): Action {
                 );
 
                 const tradeCoinSchema = z.object({
-                    sellType: z.enum(['eth', 'erc20']),
-                    buyType: z.enum(['eth', 'erc20']),
+                    sellType: z.enum(['eth']).default('eth'),
+                    buyType: z.enum(['erc20']).default('erc20'),
                     coinAddress: z.string(),
                     amountIn: z.string(),
-                    slippage: z.number(),
+                    slippage: z.number().default(0.05),
                 });
 
                 const parameters = await generateParameters(runtime, parameterContext, tradeCoinSchema);
 
                 const tradeParameters: TradeParameters = {
-                    sell: { type: parameters.sellType },
+                    sell: { type: 'eth' },
                     buy: {
-                        type: parameters.buyType,
+                        type: 'erc20',
                         address: parameters.coinAddress as Address,
                     },
                     amountIn: parseEther(parameters.amountIn),
                     slippage: parameters.slippage,
-                    sender: clients.account.address,
-                };
+                    sender: (clients.account.address as unknown) as Address,
+                } as unknown as TradeParameters;
 
-                const result = await tradeCoin({
+                const result = await (tradeCoin as unknown as (
+                    args: any
+                ) => Promise<any>)({
                     tradeParameters,
-                    walletClient: clients.walletClient,
-                    account: clients.account,
-                    publicClient: clients.publicClient,
+                    walletClient: clients.walletClient as any,
+                    account: clients.account as any,
+                    publicClient: clients.publicClient as any,
                 });
 
                 const responseContext = composeResponseContext('TRADE_COIN', result, currentState);
@@ -201,7 +208,7 @@ function tradeCoinAction(getClients: () => Promise<ZoraClients>): Action {
                 callback?.({
                     text: response,
                     content: {
-                        transactionHash: result.hash,
+                        transactionHash: (result as any).hash,
                         tradeDetails: result,
                     },
                 });

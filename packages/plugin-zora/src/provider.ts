@@ -1,5 +1,5 @@
 import type { Provider, IAgentRuntime } from '@elizaos/core';
-import { createWalletClient, createPublicClient, http, type Hex, type Address } from 'viem';
+import { createWalletClient, createPublicClient, http, type Hex } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -49,7 +49,7 @@ export const zoraProvider: Provider = {
             return `Zora Wallet Address: ${clients.account.address}`;
         } catch (error) {
             console.error('Error in Zora provider:', error);
-            return `Error initializing Zora wallet: ${error.message}`;
+            return `Error initializing Zora wallet: ${(error as Error).message}`;
         }
     },
 };
