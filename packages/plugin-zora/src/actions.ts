@@ -79,14 +79,12 @@ function createCoinAction(getClients: () => Promise<ZoraClients>): Action {
                         parameters.currency === 'ZORA' ? DeployCurrency.ZORA : DeployCurrency.ETH,
                 };
 
-                const result = await createCoin(
-                    coinParams,
-                    clients.walletClient,
-                    clients.publicClient,
-                    {
-                        gasMultiplier: 120,
-                    }
-                );
+                const result = await createCoin({
+                    ...coinParams,
+                    walletClient: clients.walletClient,
+                    publicClient: clients.publicClient,
+                    account: clients.account,
+                });
 
                 const responseContext = composeResponseContext('CREATE_COIN', result, currentState);
                 const response = await generateResponse(runtime, responseContext);
@@ -170,8 +168,8 @@ function tradeCoinAction(getClients: () => Promise<ZoraClients>): Action {
                 );
 
                 const tradeCoinSchema = z.object({
-                    sellType: z.string(),
-                    buyType: z.string(),
+                    sellType: z.enum(['eth', 'erc20']),
+                    buyType: z.enum(['eth', 'erc20']),
                     coinAddress: z.string(),
                     amountIn: z.string(),
                     slippage: z.number(),
