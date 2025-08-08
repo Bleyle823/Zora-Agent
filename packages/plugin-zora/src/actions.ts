@@ -33,6 +33,58 @@ export async function getZoraActions({ getClients }: GetZoraActionsParams): Prom
     return [createCoinAction(getClients), tradeCoinAction(getClients)];
 }
 
+async function ensureMetadataUri(
+    runtime: IAgentRuntime,
+    params: { name: string; symbol: string; uri?: string; image?: string; description?: string }
+): Promise<string> {
+    // If a plausible URI is provided, use it as-is
+    const provided = params.uri?.trim();
+    if (provided && (provided.startsWith('ipfs://') || provided.startsWith('http://') || provided.startsWith('https://'))) {
+        return provided;
+    }
+
+    const pinataJwt = process.env.PINATA_JWT;
+    if (!pinataJwt) {
+        throw new Error('Missing PINATA_JWT. Cannot auto-generate metadata URI. Provide a valid uri or set PINATA_JWT to enable auto-pinning.');
+    }
+
+    const defaultImageCid = process.env.PINATA_DEFAULT_IMAGE_CID;
+    const image = params.image?.trim() || (defaultImageCid ? `ipfs://${defaultImageCid}` : undefined);
+    const description = params.description?.trim() || `Creator coin for ${params.name}`;
+
+    const metadata = {
+        name: params.name,
+        description,
+        ...(image ? { image } : {}),
+    } as Record<string, unknown>;
+
+    const body = {
+        pinataContent: metadata,
+        pinataMetadata: { name: `zora-coin-${params.symbol}-${Date.now()}` },
+    };
+
+    const response = await runtime.fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${pinataJwt}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Pinata pinJSONToIPFS failed: ${response.status} ${response.statusText} ${text}`);
+    }
+
+    const json = (await response.json()) as { IpfsHash?: string };
+    if (!json.IpfsHash) {
+        throw new Error('Pinata response missing IpfsHash');
+    }
+
+    return `ipfs://${json.IpfsHash}`;
+}
+
 function createCoinAction(getClients: () => Promise<ZoraClients>): Action {
     return {
         name: 'CREATE_COIN',
@@ -55,13 +107,15 @@ function createCoinAction(getClients: () => Promise<ZoraClients>): Action {
                 const parameterContext = composeParameterContext(
                     'CREATE_COIN',
                     currentState,
-                    'Extract coin creation parameters including name, symbol, metadata URI, and payout recipient address.'
+                    'Extract coin creation parameters including name, symbol, metadata URI (optional), payout recipient address. Optionally include image and description for metadata.'
                 );
 
                 const createCoinSchema = z.object({
                     name: z.string(),
                     symbol: z.string(),
-                    uri: z.string(),
+                    uri: z.string().optional(),
+                    image: z.string().optional(),
+                    description: z.string().optional(),
                     payoutRecipient: z.string(),
                     platformReferrer: z.string().optional(),
                     currency: z.enum(['ZORA', 'ETH']).optional(),
@@ -69,10 +123,18 @@ function createCoinAction(getClients: () => Promise<ZoraClients>): Action {
 
                 const parameters = await generateParameters(runtime, parameterContext, createCoinSchema);
 
+                const resolvedUri = await ensureMetadataUri(runtime, {
+                    name: parameters.name,
+                    symbol: parameters.symbol,
+                    uri: parameters.uri,
+                    image: parameters.image,
+                    description: parameters.description,
+                });
+
                 const coinParams = {
                     name: parameters.name,
                     symbol: parameters.symbol,
-                    uri: parameters.uri as ValidMetadataURI,
+                    uri: resolvedUri as ValidMetadataURI,
                     payoutRecipient: parameters.payoutRecipient as Address,
                     platformReferrer: (parameters.platformReferrer as Address) || undefined,
                     currency:

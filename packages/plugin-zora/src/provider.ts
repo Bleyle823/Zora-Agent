@@ -1,12 +1,12 @@
 import type { Provider, IAgentRuntime } from '@elizaos/core';
-import { createWalletClient, createPublicClient, http, type Hex } from 'viem';
-import { base } from 'viem/chains';
+import { createWalletClient, createPublicClient, http, type Hex, type PublicClient, type WalletClient, type Account } from 'viem';
+import { base, baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 export interface ZoraClients {
-    publicClient: ReturnType<typeof createPublicClient>;
-    walletClient: ReturnType<typeof createWalletClient>;
-    account: ReturnType<typeof privateKeyToAccount>;
+    publicClient: PublicClient;
+    walletClient: WalletClient;
+    account: Account;
 }
 
 export async function getZoraClients(): Promise<ZoraClients> {
@@ -20,20 +20,33 @@ export async function getZoraClients(): Promise<ZoraClients> {
         );
     }
 
+    // Infer chain from env or RPC URL
+    // Priority: explicit ZORA_CHAIN -> RPC URL hints -> default Base mainnet
+    const zoraChainEnv = (process.env.ZORA_CHAIN || '').toLowerCase();
+    const rpcUrlLower = rpcUrl.toLowerCase();
+    const isSepoliaEnv = zoraChainEnv === 'base-sepolia' || zoraChainEnv === 'basesepolia' || zoraChainEnv === 'sepolia';
+    const isSepoliaRpc = rpcUrlLower.includes('sepolia') || rpcUrlLower.includes('84532');
+    const chain = isSepoliaEnv || isSepoliaRpc ? baseSepolia : base;
+
+    if (process.env.DEBUG_ZORA) {
+        // eslint-disable-next-line no-console
+        console.log(`[Zora] Using chain: ${chain.name} (id: ${chain.id}) with RPC: ${rpcUrl}`);
+    }
+
     // Set up account
     const account = privateKeyToAccount(privateKey as Hex);
 
     // Set up viem clients
     const publicClient = createPublicClient({
-        chain: base,
+        chain,
         transport: http(rpcUrl),
-    });
+    }) as PublicClient;
 
     const walletClient = createWalletClient({
-        account: account.address as Hex,
-        chain: base,
+        account,
+        chain,
         transport: http(rpcUrl),
-    });
+    }) as WalletClient;
 
     return {
         publicClient,

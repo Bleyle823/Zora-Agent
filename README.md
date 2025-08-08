@@ -137,6 +137,7 @@ For detailed instructions on using the start script, including character managem
 
 2. To load custom characters:
     - Use `pnpm start --characters="path/to/your/character.json"`
+    - pnpm start -- --characters="characters/c3po.character.json"
     - Multiple character files can be loaded simultaneously
 3. Connect with X (Twitter)
     - Change `"clients": []` to `"clients": ["twitter"]` in the character file to connect with X
