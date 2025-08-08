@@ -22,6 +22,11 @@ import { parseEther, type Hex, type Address } from 'viem';
 import { z } from 'zod';
 import { getZoraClients, type ZoraClients } from './provider';
 
+// Safely stringify objects containing BigInt by converting them to strings
+function safeStringify(value: unknown): string {
+    return JSON.stringify(value, (_key, val) => (typeof val === 'bigint' ? val.toString() : val));
+}
+
 type GetZoraActionsParams = {
     getClients: () => Promise<ZoraClients>;
 };
@@ -367,7 +372,7 @@ Note that {{agentName}} is capable of reading/seeing/hearing various forms of me
 
 The Zora action "${actionName}" was executed successfully.
 Here is the result:
-${JSON.stringify(result)}
+${safeStringify(result)}
 
 {{actions}}
 
